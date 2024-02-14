@@ -1,12 +1,25 @@
 import uuid
 import random
 import json
+from typing import Optional
 from collections import deque
-
+from sqlalchemy.orm import Session
 from app.models.models import GameDB, MinePosition
 
 
-def create_game_db(session, width, height, mines_count):
+def create_game_db(session: Session, width: int, height: int, mines_count: int) -> dict:
+    """
+    Создает новую игру в базе данных.
+
+    Parameters:
+    - `session`: Сессия базы данных SQLAlchemy.
+    - `width`: Ширина игрового поля.
+    - `height`: Высота игрового поля.
+    - `mines_count`: Количество мин на поле.
+
+    Returns:
+    - Словарь с информацией о новой игре.
+    """
     game_id = str(uuid.uuid4())
     field = [[" " for _ in range(width)] for _ in range(height)]
 
@@ -44,7 +57,16 @@ def create_game_db(session, width, height, mines_count):
     }
     
     
-def reveal_cell(session, game_state, col, row):
+def reveal_cell(session: Session, game_state: dict, col: int, row: int) -> None:
+    """
+    Раскрывает ячейку игрового поля и обновляет состояние игры.
+
+    Parameters:
+    - `session`: Сессия базы данных SQLAlchemy.
+    - `game_state`: Текущее состояние игры.
+    - `col`: Колонка ячейки.
+    - `row`: Строка ячейки.
+    """
     width, height = game_state['width'], game_state['height']
     if col < 0 or col >= width or row < 0 or row >= height or game_state['field'][row][col] != " ":
         return
@@ -74,7 +96,17 @@ def reveal_cell(session, game_state, col, row):
             game_state['field'][current_row][current_col] = str(mine_count)
 
 
-def get_game_db(session, game_id):
+def get_game_db(session: Session, game_id: str) -> Optional[dict]:
+    """
+    Получает информацию о текущем состоянии игры из базы данных.
+
+    Parameters:
+    - `session`: Сессия базы данных SQLAlchemy.
+    - `game_id`: Идентификатор игры.
+
+    Returns:
+    - Словарь с информацией о текущем состоянии игры или None, если игра не найдена.
+    """
     game = session.query(GameDB).filter(GameDB.game_id == game_id).first()
     if game:
         return {
@@ -88,14 +120,28 @@ def get_game_db(session, game_id):
     else:
         return None
 
-def update_game_db(session, game_state):
+def update_game_db(session: Session, game_state: dict) -> None:
+    """
+    Обновляет состояние игры в базе данных.
+
+    Parameters:
+    - `session`: Сессия базы данных SQLAlchemy.
+    - `game_state`: Текущее состояние игры.
+    """
     game = session.query(GameDB).filter(GameDB.game_id == game_state['game_id']).first()
     if game:
         game.field = json.dumps(game_state['field'])  # Сохраняем поле в виде JSON
         game.completed = game_state['completed']
         session.commit()   
 
-def reveal_remaining_cells(session, game_state):
+def reveal_remaining_cells(session: Session, game_state: dict) -> None:
+    """
+    Раскрывает все оставшиеся ячейки игрового поля.
+
+    Parameters:
+    - `session`: Сессия базы данных SQLAlchemy.
+    - `game_state`: Текущее состояние игры.
+    """
     width, height = game_state['width'], game_state['height']
     for row in range(height):
         for col in range(width):
@@ -103,7 +149,16 @@ def reveal_remaining_cells(session, game_state):
                 reveal_cell(session, game_state, col, row)
                 
                 
-def check_game_completion(game_state):
+def check_game_completion(game_state: dict) -> bool:
+    """
+    Проверяет завершена ли игра.
+
+    Parameters:
+    - `game_state`: Текущее состояние игры.
+
+    Returns:
+    - True, если игра завершена, False в противном случае.
+    """
     #width, height = game_state['width'], game_state['height']
     mines_count = game_state['mines_count']
     
