@@ -17,3 +17,6 @@ class TurnRequest(BaseModel):
     game_id: str
     col: int
     row: int
+    
+class ErrorResponse(BaseModel):
+    error: str

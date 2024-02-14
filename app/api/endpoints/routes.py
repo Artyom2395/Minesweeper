@@ -3,8 +3,9 @@ from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from app.models.config import SessionLocal, engine
 from app.models.models import Base, GameDB, MinePosition
-from app.api.shemas.shemas import Game, NewGameRequest, TurnRequest
+from app.api.shemas.shemas import Game, NewGameRequest, TurnRequest, ErrorResponse
 from app.game_logic.game_manager import create_game_db, reveal_cell, get_game_db, update_game_db, reveal_remaining_cells, check_game_completion
+from app.api.endpoints.handlers import CustomException
 from main import app
 
 Base.metadata.create_all(bind=engine)
@@ -27,10 +28,13 @@ def create_new_game(request: NewGameRequest, session: Session = Depends(get_db))
 def make_turn(request: TurnRequest, session: Session = Depends(get_db)):
     game_state = get_game_db(session, request.game_id)
     if not game_state:
-        raise HTTPException(status_code=404, detail="Game not found")
+        raise CustomException(detail="Игра не найдена", status_code=404)
+    
+    if game_state['completed']:
+        raise CustomException(detail="Игра завершена", status_code=404)
     
     if game_state['field'][request.row][request.col] != " ":
-        raise HTTPException(status_code=400, detail="error")
+        raise CustomException(detail="Недопустимый ход: ячейка уже открыта", status_code=404)
     
     mines_positions = session.query(MinePosition).filter(MinePosition.game_id == game_state['game_id']).all()
     hit_mine = (request.row, request.col) in [(mine.row, mine.col) for mine in mines_positions]
